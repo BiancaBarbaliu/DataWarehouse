@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: acme_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: acme_dw
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: .
+    container_name: acme_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: acme_dw
+    depends_on:
+      - mongo
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  mcp:
+    build: .
+    container_name: acme_mcp
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: acme_dw
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - mongo
+      - api
+    command: python -m mcp_server.server
+
+volumes:
+  mongo_data:
