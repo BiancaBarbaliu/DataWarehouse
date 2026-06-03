@@ -1,4 +1,4 @@
-"""Analytics API endpoints (UC3)."""
+"""Analytics API endpoints (UC3) — NumPy + Apache Spark."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -43,7 +43,7 @@ def trend(
     return engine.compute_trend(series_id, window=window)
 
 
-@router.get("/forecast/{asset_id}/{source_id}", summary="Next-day price forecast")
+@router.get("/forecast/{asset_id}/{source_id}", summary="Next-day price forecast (NumPy)")
 def forecast(
     asset_id: str,
     source_id: str,
@@ -73,3 +73,44 @@ def compare(body: dict):
         if ts:
             series_ids.append(ts["_id"])
     return engine.compare_assets(series_ids)
+
+
+# ── Apache Spark endpoints ────────────────────────────────────────────────────
+
+@router.get(
+    "/spark/stats/{asset_id}/{source_id}",
+    summary="Spark aggregations (min/max/avg/stddev via Apache Spark DataFrame)",
+)
+def spark_stats(asset_id: str, source_id: str):
+    """
+    Runs a real Apache Spark job to compute aggregations on the time series.
+    Requires PySpark to be installed: pip install pyspark
+    """
+    series_id = _resolve_series(asset_id, source_id)
+    try:
+        from analytics.spark_jobs import spark_aggregations
+        return spark_aggregations(series_id)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+
+
+@router.get(
+    "/spark/predict/{asset_id}/{source_id}",
+    summary="Spark MLlib linear regression — next-day close price prediction",
+)
+def spark_predict(
+    asset_id: str,
+    source_id: str,
+    lookback: Annotated[int, Query(ge=10, le=365)] = 60,
+):
+    """
+    Trains a Spark MLlib LinearRegression model on historical close prices
+    and predicts the next day's closing price.
+    Requires PySpark: pip install pyspark
+    """
+    series_id = _resolve_series(asset_id, source_id)
+    try:
+        from analytics.spark_jobs import spark_predict_next_day
+        return spark_predict_next_day(series_id, lookback=lookback)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))

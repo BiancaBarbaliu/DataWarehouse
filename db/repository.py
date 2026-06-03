@@ -234,17 +234,16 @@ def insert_ts_points(points: list[dict]) -> int:
     """
     if not points:
         return 0
-    from pymongo import UpdateOne
-    ops = [
-        UpdateOne(
+    inserted = 0
+    for p in points:
+        result = col_ts_points().update_one(
             {"series_id": p["series_id"], "timestamp": p["timestamp"]},
             {"$setOnInsert": p},
             upsert=True,
         )
-        for p in points
-    ]
-    result = col_ts_points().bulk_write(ops, ordered=False)
-    return result.upserted_count
+        if result.upserted_id is not None:
+            inserted += 1
+    return inserted
 
 
 def get_ts_points(
