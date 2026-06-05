@@ -2,6 +2,8 @@
 
 A temporal data warehouse for financial market data built with Python, FastAPI, and MongoDB.
 
+[Watch Demo] https://drive.google.com/drive/u/0/folders/1neFWSytJQAo4GAoYHNGNgOtvIqI_1Tlj
+
 ## Architecture
 
 ```
